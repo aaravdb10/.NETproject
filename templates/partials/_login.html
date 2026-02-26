@@ -1,0 +1,164 @@
+</form>
+
+<p class="auth-switch">Already have an account? <a href="#" onclick="showLoginPage()">Sign in</a></p>
+</div>
+</div>
+</div>
+
+<!-- Login Page -->
+<div class="auth-page" id="loginPage" style="display: none;">
+    <!-- Left branding panel -->
+    <div class="auth-left">
+        <!-- Animated floating shapes -->
+        <div class="auth-shapes">
+            <svg class="shape shape-1" viewBox="0 0 80 80">
+                <circle cx="40" cy="40" r="38" fill="none" stroke="currentColor" stroke-width="1.5" />
+            </svg>
+            <svg class="shape shape-2" viewBox="0 0 60 60">
+                <rect x="5" y="5" width="50" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"
+                    transform="rotate(20 30 30)" />
+            </svg>
+            <svg class="shape shape-3" viewBox="0 0 70 70">
+                <polygon points="35,4 66,60 4,60" fill="none" stroke="currentColor" stroke-width="1.5" />
+            </svg>
+            <svg class="shape shape-4" viewBox="0 0 50 50">
+                <circle cx="25" cy="25" r="10" fill="currentColor" opacity="0.15" />
+            </svg>
+            <svg class="shape shape-5" viewBox="0 0 90 90">
+                <rect x="10" y="10" width="70" height="70" rx="16" fill="none" stroke="currentColor" stroke-width="1"
+                    transform="rotate(-15 45 45)" />
+            </svg>
+            <svg class="shape shape-6" viewBox="0 0 40 40">
+                <circle cx="20" cy="20" r="18" fill="none" stroke="currentColor" stroke-width="1"
+                    stroke-dasharray="4 4" />
+            </svg>
+        </div>
+        <div class="auth-left-content">
+            <div class="auth-brand">
+                <i class="fas fa-shield-alt"></i>
+                <span>SecureFlow RBAC</span>
+            </div>
+            <h2>Secure access, every time</h2>
+            <p>Your identity is verified by email OTP and Google reCAPTCHA on every login attempt.</p>
+            <ul class="auth-features">
+                <li><i class="fas fa-check-circle"></i> Email OTP (5-minute expiry)</li>
+                <li><i class="fas fa-check-circle"></i> Google reCAPTCHA bot protection</li>
+                <li><i class="fas fa-check-circle"></i> Max 5 OTP attempts per session</li>
+                <li><i class="fas fa-check-circle"></i> Rate-limited after 3 failures</li>
+            </ul>
+            <div class="auth-left-badge">
+                <i class="fas fa-lock"></i>
+                Two-factor authentication enabled
+            </div>
+        </div>
+    </div>
+    <!-- Right form panel -->
+    <div class="auth-right">
+        <div class="auth-card">
+            <button class="back-to-home" onclick="showHomePage()">
+                <i class="fas fa-arrow-left"></i> Back to Home
+            </button>
+
+            <div class="auth-steps">
+                <div class="auth-step is-active" id="loginStep1Ind">
+                    <span class="step-num">1</span>
+                    <span class="step-lbl">Credentials</span>
+                </div>
+                <div class="step-connector"></div>
+                <div class="auth-step" id="loginStep2Ind">
+                    <span class="step-num">2</span>
+                    <span class="step-lbl">Verify OTP</span>
+                </div>
+            </div>
+
+            <div class="auth-card-header">
+                <h1>Welcome back</h1>
+                <p>Sign in to your SecureFlow account</p>
+            </div>
+
+            <form class="auth-form" id="loginForm">
+                <!-- Step 1 fields -->
+                <div id="loginStep1Fields">
+                    <div class="form-group anim-field" style="--field-i:0">
+                        <label for="email">Email address</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-envelope"></i>
+                            <input type="email" id="email" name="email" placeholder="aaravdb10@gmail.com"
+                                autocomplete="email" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group anim-field" style="--field-i:1">
+                        <label for="password">Password</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="password" name="password" placeholder="********" minlength="8"
+                                maxlength="72" autocomplete="current-password" required>
+                            <i class="fas fa-eye toggle-password" id="togglePassword"></i>
+                        </div>
+                    </div>
+
+                    <div class="form-group security-group anim-field"
+                        style="--field-i:3; margin-top: 10px; margin-bottom: 0;">
+                        <label><i class="fas fa-robot" style="color:#2563eb;margin-right:5px;"></i>Verify you're
+                            human</label>
+                        <div class="recaptcha-wrapper-compact">
+                            <div id="loginRecaptcha" class="recaptcha-slot"></div>
+                            <div class="form-group-inline anim-field remember-inline">
+                                <label class="remember-me-label" style="margin-left: 10px;">
+                                    <input type="checkbox" id="rememberMe" name="rememberMe">
+                                    <span class="custom-checkbox"><i class="fas fa-check"></i></span>
+                                    <span style="font-size: 0.8rem;">Remember me</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: OTP verification -->
+                <div class="otp-step-panel" id="loginOtpGroup" style="display:none;">
+                    <div class="otp-icon-row">
+                        <div class="otp-icon-wrap">
+                            <i class="fas fa-envelope-open-text"></i>
+                        </div>
+                        <div>
+                            <strong>Check your email</strong>
+                            <p class="security-hint">A 6-digit code was sent to your address. It expires in 5
+                                minutes.</p>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="loginOtp">One-time code</label>
+                        <input class="otp-input" type="text" id="loginOtp" name="loginOtp" placeholder="_ _ _ _ _ _"
+                            inputmode="numeric" maxlength="6" pattern="[0-9]{6}" autocomplete="one-time-code">
+                    </div>
+                </div>
+
+                <button type="submit" class="auth-btn" id="loginSubmitBtn">
+                    <i class="fas fa-sign-in-alt"></i>
+                    Continue
+                </button>
+            </form>
+
+            <div class="auth-divider"><span>Or try a demo account</span></div>
+
+            <div class="demo-accounts">
+                <button class="demo-btn admin-demo" data-role="admin">
+                    <i class="fas fa-crown"></i>
+                    <div><strong>Rahul Sharma</strong><small>admin@company.com</small></div>
+                </button>
+                <button class="demo-btn manager-demo" data-role="manager">
+                    <i class="fas fa-users-cog"></i>
+                    <div><strong>Priya Patel</strong><small>manager@company.com</small></div>
+                </button>
+                <button class="demo-btn employee-demo" data-role="employee">
+                    <i class="fas fa-user"></i>
+                    <div><strong>Vikram Singh</strong><small>employee@company.com</small></div>
+                </button>
+            </div>
+
+            <p class="auth-switch">Don't have an account? <a href="#" onclick="showRegisterPage()">Create one</a>
+            </p>
+        </div>
+    </div>
+</div>

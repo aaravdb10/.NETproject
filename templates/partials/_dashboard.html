@@ -1,0 +1,44 @@
+    <!-- Dashboard Page -->
+    <div class="dashboard-container" id="dashboardPage" style="display: none;">
+        <!-- Navigation Bar -->
+        <nav class="navbar">
+            <div class="nav-brand">
+                <i class="fas fa-shield-alt"></i>
+                <span>SecureFlow RBAC</span>
+            </div>
+            <div class="nav-links" id="navLinks">
+                <!-- Dynamic navigation based on role -->
+            </div>
+            <div class="nav-user">
+                <button class="dark-mode-toggle" id="dashboardDarkToggle">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <div class="user-info">
+                    <div class="user-avatar" id="userAvatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="user-details">
+                        <span class="user-name" id="userName">User Name</span>
+                        <span class="user-role" id="userRole">Role</span>
+                    </div>
+                </div>
+                <button class="logout-btn" id="logoutBtn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Logout
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <div class="content-header">
+                <h1 id="dashboardTitle">Dashboard</h1>
+                <p id="dashboardSubtitle">Welcome to your personalized dashboard</p>
+            </div>
+
+            <!-- Dashboard Content (Dynamic based on role) -->
+            <div class="dashboard-content" id="dashboardContent">
+                <!-- Content will be populated by JavaScript -->
+            </div>
+        </main>
+    </div>

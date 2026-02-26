@@ -1,0 +1,153 @@
+<!-- Registration Page -->
+<div class="auth-page" id="registerPage" style="display: none;">
+    <!-- Left branding panel -->
+    <div class="auth-left">
+        <div class="auth-left-content">
+            <div class="auth-brand">
+                <i class="fas fa-shield-alt"></i>
+                <span>SecureFlow RBAC</span>
+            </div>
+            <h2>Join with confidence</h2>
+            <p>Every account goes through email OTP verification before creation. No bots, no guessing.</p>
+            <ul class="auth-features">
+                <li><i class="fas fa-check-circle"></i> Email OTP confirms address ownership</li>
+                <li><i class="fas fa-check-circle"></i> Strong password enforced before submission</li>
+                <li><i class="fas fa-check-circle"></i> Google reCAPTCHA bot protection</li>
+                <li><i class="fas fa-check-circle"></i> Passwords are hashed before storage</li>
+            </ul>
+            <div class="auth-left-badge">
+                <i class="fas fa-lock"></i>
+                End-to-end secure registration
+            </div>
+        </div>
+    </div>
+    <!-- Right form panel -->
+    <div class="auth-right">
+        <div class="auth-card">
+            <button class="back-to-home" onclick="showHomePage()">
+                <i class="fas fa-arrow-left"></i> Back to Home
+            </button>
+
+            <div class="auth-steps">
+                <div class="auth-step is-active" id="registerStep1Ind">
+                    <span class="step-num">1</span>
+                    <span class="step-lbl">Your Details</span>
+                </div>
+                <div class="step-connector"></div>
+                <div class="auth-step" id="registerStep2Ind">
+                    <span class="step-num">2</span>
+                    <span class="step-lbl">Verify Email</span>
+                </div>
+            </div>
+
+            <div class="auth-card-header">
+                <h1>Create your account</h1>
+                <p>Fill in your details and confirm via email</p>
+            </div>
+
+            <form class="auth-form" id="registerForm">
+                <!-- Step 1 fields -->
+                <div id="registerStep1Fields">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="firstName">First name</label>
+                            <input type="text" id="firstName" name="firstName" placeholder="aarav" minlength="2"
+                                maxlength="50" autocomplete="given-name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="lastName">Last name</label>
+                            <input type="text" id="lastName" name="lastName" placeholder="gandhi" minlength="2"
+                                maxlength="50" autocomplete="family-name" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row-compact">
+                        <div class="form-group">
+                            <label for="registerEmail">Email address</label>
+                            <input type="email" id="registerEmail" name="email" placeholder="aaravdb10@gmail.com"
+                                autocomplete="email" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="department">Department</label>
+                            <select id="department" name="department" required>
+                                <option value="">Select Department</option>
+                                <option value="IT">Information Technology</option>
+                                <option value="HR">Human Resources</option>
+                                <option value="Finance">Finance</option>
+                                <option value="Marketing">Marketing</option>
+                                <option value="Operations">Operations</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row-compact">
+                        <div class="form-group">
+                            <label for="registerPassword">Password</label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-lock"></i>
+                                <input type="password" id="registerPassword" name="password" placeholder="********"
+                                    minlength="8" maxlength="72" autocomplete="new-password" required>
+                                <i class="fas fa-eye toggle-password" id="toggleRegPassword"></i>
+                            </div>
+                            <div class="password-strength" id="pwStrength" style="display:none;">
+                                <div class="pw-bar-track">
+                                    <div class="pw-bar" id="pwBar"></div>
+                                </div>
+                                <span class="pw-label" id="pwLabel">Weak</span>
+                            </div>
+                            <ul class="pw-rules" id="pwRules">
+                                <li id="rule-len"><i class="fas fa-circle"></i> 8+ chars</li>
+                                <li id="rule-upper"><i class="fas fa-circle"></i> Uppercase</li>
+                                <li id="rule-lower"><i class="fas fa-circle"></i> Lowercase</li>
+                                <li id="rule-num"><i class="fas fa-circle"></i> Number</li>
+                                <li id="rule-special"><i class="fas fa-circle"></i> Special</li>
+                            </ul>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="confirmPassword">Confirm password</label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-lock"></i>
+                                <input type="password" id="confirmPassword" name="confirmPassword"
+                                    placeholder="********" minlength="8" maxlength="72" autocomplete="new-password"
+                                    required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group security-group" style="margin-top: 10px; margin-bottom: 0;">
+                        <label><i class="fas fa-robot" style="color:#2563eb;margin-right:5px;"></i>Verify you're
+                            human</label>
+                        <div class="recaptcha-wrapper-compact">
+                            <div id="registerRecaptcha" class="recaptcha-slot"></div>
+                            <small class="security-hint" id="registerRecaptchaHint"
+                                style="flex: 1; text-align: left; margin-left: 15px; margin-top: 0; align-self: center;">Complete
+                                reCAPTCHA to continue.</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: OTP verification -->
+                <div class="otp-step-panel" id="registerOtpGroup" style="display:none;">
+                    <div class="otp-icon-row">
+                        <div class="otp-icon-wrap">
+                            <i class="fas fa-envelope-open-text"></i>
+                        </div>
+                        <div>
+                            <strong>Check your email</strong>
+                            <p class="security-hint">A 6-digit code was sent to your address. It expires in 5
+                                minutes.</p>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerOtp">One-time code</label>
+                        <input class="otp-input" type="text" id="registerOtp" name="registerOtp"
+                            placeholder="_ _ _ _ _ _" inputmode="numeric" maxlength="6" pattern="[0-9]{6}"
+                            autocomplete="one-time-code">
+                    </div>
+                </div>
+
+                <button type="submit" class="auth-btn" id="registerSubmitBtn">
+                    <i class="fas fa-paper-plane"></i>
+                    Send verification code

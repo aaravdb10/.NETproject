@@ -1,0 +1,139 @@
+    <!-- Access Denied Modal -->
+    <div class="modal-overlay" id="accessDeniedModal" style="display: none;">
+        <div class="modal">
+            <div class="modal-header">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h3>Access Denied</h3>
+            </div>
+            <div class="modal-body">
+                <p>You don't have permission to access this feature.</p>
+                <p>Contact your administrator for assistance.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="closeAccessModal">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Dialog Modal -->
+    <div class="modal-overlay" id="confirmModal" style="display:none;">
+        <div class="modal confirm-modal">
+            <div class="modal-header">
+                <h3 id="confirmTitle">Confirm Action</h3>
+                <button class="modal-close-btn" onclick="closeConfirmModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeConfirmModal()">Cancel</button>
+                <button class="btn btn-danger" id="confirmOkBtn" onclick="executeConfirm()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Form Modal -->
+    <div class="modal-overlay" id="userModal" style="display:none;">
+        <div class="modal user-modal">
+            <div class="modal-header">
+                <h3 id="userModalTitle">Add User</h3>
+                <button class="modal-close-btn" onclick="closeUserModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="userModalForm" autocomplete="off">
+                    <input type="hidden" id="userModalId">
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label>First Name</label>
+                            <input type="text" id="userModalFirstName" placeholder="First name" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Last Name</label>
+                            <input type="text" id="userModalLastName" placeholder="Last name" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="userModalEmail" placeholder="email@company.com" required>
+                    </div>
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label>Role</label>
+                            <select id="userModalRole">
+                                <option value="employee">Employee</option>
+                                <option value="manager">Manager</option>
+                                <option value="admin">Administrator</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Department</label>
+                            <select id="userModalDept">
+                                <option value="IT">Information Technology</option>
+                                <option value="HR">Human Resources</option>
+                                <option value="Finance">Finance</option>
+                                <option value="Marketing">Marketing</option>
+                                <option value="Operations">Operations</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select id="userModalStatus">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                </form>
+                <p class="modal-error-msg" id="userModalError" style="display:none;"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeUserModal()">Cancel</button>
+                <button class="btn btn-primary" id="userModalSaveBtn" onclick="submitUserModal()">
+                    <i class="fas fa-save"></i> Save User
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leave Request Modal (Employee) -->
+    <div class="modal-overlay" id="leaveModal" style="display:none;">
+        <div class="modal leave-modal">
+            <div class="modal-header">
+                <h3>Submit Leave Request</h3>
+                <button class="modal-close-btn" onclick="closeLeaveModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="leaveModalForm" autocomplete="off">
+                    <div class="form-group">
+                        <label>Leave Type</label>
+                        <select id="leaveModalType">
+                            <option value="vacation">Vacation</option>
+                            <option value="sick">Sick Leave</option>
+                            <option value="personal">Personal</option>
+                        </select>
+                    </div>
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label>Start Date</label>
+                            <input type="date" id="leaveModalStart" required>
+                        </div>
+                        <div class="form-group">
+                            <label>End Date</label>
+                            <input type="date" id="leaveModalEnd" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Reason</label>
+                        <textarea id="leaveModalReason" rows="3" placeholder="Brief reason for leave..."></textarea>
+                    </div>
+                </form>
+                <p class="modal-error-msg" id="leaveModalError" style="display:none;"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeLeaveModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="submitLeaveModal()">
+                    <i class="fas fa-paper-plane"></i> Submit Request
+                </button>
+            </div>
+        </div>
+    </div>
