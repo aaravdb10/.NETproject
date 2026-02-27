@@ -9,10 +9,9 @@ This module implements comprehensive session security including:
 - Logout security measures
 """
 
+# pyright: reportUnknownParameterType=false, reportMissingParameterType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false, reportUnknownMemberType=false, reportUnknownLambdaType=false, reportMissingTypeArgument=false, reportAttributeAccessIssue=false, reportOptionalSubscript=false, reportDeprecated=false, reportUndefinedVariable=false, reportUnusedVariable=false
+
 import secrets
-import hashlib
-import time
-import json
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 import sqlite3

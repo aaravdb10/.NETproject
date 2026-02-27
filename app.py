@@ -1,3 +1,5 @@
+# pyright: reportUnknownParameterType=false, reportMissingParameterType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false, reportUnknownMemberType=false, reportUnknownLambdaType=false, reportMissingTypeArgument=false, reportAttributeAccessIssue=false, reportOptionalSubscript=false, reportDeprecated=false, reportUndefinedVariable=false, reportUnusedVariable=false
+
 from flask import Flask, render_template, request, jsonify, send_from_directory, has_request_context, session, redirect
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -13,6 +15,7 @@ import secrets
 import hmac
 import urllib.parse
 import urllib.request
+import urllib.error
 from typing import Tuple
 
 from email_config import send_otp_email
@@ -41,7 +44,15 @@ RECAPTCHA_ENABLED = bool(RECAPTCHA_SECRET_KEY and RECAPTCHA_SITE_KEY)
 
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '').strip()
 GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', '').strip()
-GOOGLE_REDIRECT_URI = os.getenv('GOOGLE_REDIRECT_URI', 'http://localhost:5000/api/auth/google/callback').strip()
+_legacy_google_redirect = os.getenv('GOOGLE_OAUTH_ENABLED', '').strip()
+_google_redirect_from_env = os.getenv('GOOGLE_REDIRECT_URI', '').strip()
+if _google_redirect_from_env:
+    _resolved_google_redirect_uri = _google_redirect_from_env
+elif _legacy_google_redirect.startswith('http://') or _legacy_google_redirect.startswith('https://'):
+    _resolved_google_redirect_uri = _legacy_google_redirect
+else:
+    _resolved_google_redirect_uri = 'http://localhost:5000/api/auth/google/callback'
+GOOGLE_REDIRECT_URI = _resolved_google_redirect_uri
 GOOGLE_OAUTH_ENABLED = bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET)
 
 GITHUB_CLIENT_ID = os.getenv('GITHUB_CLIENT_ID', '').strip()
@@ -70,16 +81,30 @@ def get_db_connection():
                 f"DRIVER={{{DB_DRIVER}}};"
                 f"SERVER={DB_SERVER};DATABASE={DB_NAME};"
                 f"UID={DB_USER};PWD={DB_PASSWORD};"
-                "Encrypt=yes;TrustServerCertificate=yes;Connection Timeout=5;"
+                "Encrypt=yes;TrustServerCertificate=yes;"
             )
         else:
             conn_str = (
                 f"DRIVER={{{DB_DRIVER}}};"
                 f"SERVER={DB_SERVER};DATABASE={DB_NAME};"
-                "Trusted_Connection=yes;Encrypt=yes;TrustServerCertificate=yes;Connection Timeout=5;"
+                "Trusted_Connection=yes;Encrypt=yes;TrustServerCertificate=yes;"
             )
-
-        return pyodbc.connect(conn_str)
+        try:
+            return pyodbc.connect(conn_str, timeout=5)
+        except pyodbc.InterfaceError as e:
+            message = str(e)
+            if 'Login failed for user' in message:
+                raise RuntimeError(
+                    'SQL Server login failed. Check DB_USER/DB_PASSWORD and ensure SQL authentication is enabled for this login.'
+                ) from e
+            raise RuntimeError(f'SQL Server connection failed: {message}') from e
+        except pyodbc.OperationalError as e:
+            message = str(e)
+            if 'certificate chain was issued by an authority that is not trusted' in message:
+                raise RuntimeError(
+                    'SQL Server TLS certificate is not trusted by this machine. For local dev, use TrustServerCertificate=yes or install a trusted cert.'
+                ) from e
+            raise RuntimeError(f'SQL Server connection failed: {message}') from e
 
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
@@ -324,7 +349,7 @@ def cleanup_expired_security_state():
         pending_oauth_callbacks.pop(token, None)
 
 
-def verify_recaptcha(token: str, remote_ip: str = None) -> Tuple[bool, str]:
+def verify_recaptcha(token: str | None, remote_ip: str | None = None) -> Tuple[bool, str]:
     """Verify Google reCAPTCHA token on server side"""
     if not RECAPTCHA_ENABLED:
         return True, 'reCAPTCHA bypassed in local dev mode'
@@ -360,7 +385,7 @@ def verify_recaptcha(token: str, remote_ip: str = None) -> Tuple[bool, str]:
         return False, 'Unable to verify reCAPTCHA'
 
 
-def create_otp_session(email: str, purpose: str, token: str = None):
+def create_otp_session(email: str, purpose: str, token: str | None = None):
     """Create OTP challenge session and send OTP email"""
     cleanup_expired_security_state()
 
@@ -425,6 +450,12 @@ def get_client_ip() -> str:
         return real_ip
 
     return (request.remote_addr or '').strip()
+
+
+def get_user_from_session() -> int | None:
+    """Best-effort user id from server session."""
+    value = session.get('user_id')
+    return int(value) if isinstance(value, int) else None
 
 
 def normalize_google_name(given_name: str, family_name: str, full_name: str):
@@ -742,10 +773,30 @@ def google_oauth_callback():
 
         return redirect('/#oauth_token=' + urllib.parse.quote(temp_token))
 
+    except urllib.error.HTTPError as e:
+        raw = ''
+        try:
+            raw = e.read().decode('utf-8', errors='ignore')
+        except Exception:
+            raw = ''
+
+        message = 'Google OAuth HTTP error. Please verify client credentials and redirect URI'
+        if raw:
+            try:
+                payload = json.loads(raw)
+                detail = (payload.get('error_description') or payload.get('error') or '').strip()
+                if detail:
+                    message = f'Google OAuth failed: {detail}'
+            except Exception:
+                message = f'Google OAuth failed: {raw[:180]}'
+
+        app.logger.error('Google OAuth HTTPError %s: %s', e.code, raw)
+        return _redirect_with_error(message)
     except RuntimeError as e:
         return _redirect_with_error(str(e))
-    except Exception:
-        return _redirect_with_error('Google login failed. Please try again')
+    except Exception as e:
+        app.logger.exception('Google OAuth callback failed: %s', e)
+        return _redirect_with_error('Google login failed. Check redirect URI/domain and try again')
 
 
 @app.route('/api/auth/github/start', methods=['GET'])

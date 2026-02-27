@@ -2595,13 +2595,17 @@ async function apiCall(endpoint, method = 'GET', data = null) {
         }
 
         const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-        const result = await response.json();
+        const contentType = response.headers.get('content-type') || '';
+        const isJson = contentType.includes('application/json');
+        const result = isJson ? await response.json() : null;
 
         if (!response.ok) {
-            throw new Error(result.error || 'API request failed');
+            const backendMessage = result?.message || result?.error;
+            const fallbackMessage = isJson ? 'Request failed' : (await response.text()) || 'API request failed';
+            throw new Error(backendMessage || fallbackMessage);
         }
 
-        return result;
+        return result || { success: true };
     } catch (error) {
         console.error('API Error:', error);
         throw error;
