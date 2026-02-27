@@ -138,10 +138,75 @@ document.addEventListener('DOMContentLoaded', function () {
     initializeSecurityFeatures();
 
     // Listen for back/forward navigation
-    window.addEventListener('hashchange', checkExistingSession);
+    window.addEventListener('hashchange', async () => {
+        const handled = await handleOAuthHashCallback();
+        if (!handled) checkExistingSession();
+    });
 
-    checkExistingSession();
+    handleOAuthHashCallback().then((handled) => {
+        if (!handled) checkExistingSession();
+    });
 });
+
+function continueWithGoogle(mode = 'login') {
+    const finalMode = mode === 'signup' ? 'signup' : 'login';
+    window.location.href = `${API_BASE_URL}/auth/google/start?mode=${encodeURIComponent(finalMode)}`;
+}
+
+function continueWithGitHub(mode = 'login') {
+    const finalMode = mode === 'signup' ? 'signup' : 'login';
+    window.location.href = `${API_BASE_URL}/auth/github/start?mode=${encodeURIComponent(finalMode)}`;
+}
+
+async function handleOAuthHashCallback() {
+    const rawHash = (window.location.hash || '').replace(/^#/, '');
+    if (!rawHash) return false;
+
+    const params = new URLSearchParams(rawHash);
+    const oauthToken = params.get('oauth_token');
+    const oauthError = params.get('oauth_error');
+
+    if (!oauthToken && !oauthError) return false;
+
+    const cleanUrl = `${window.location.pathname}${window.location.search}`;
+
+    if (oauthError) {
+        history.replaceState(null, '', cleanUrl);
+        showLoginPage();
+        showToast(decodeURIComponent(oauthError), 'error');
+        return true;
+    }
+
+    try {
+        const response = await apiCall('/auth/oauth/finalize', 'POST', { token: oauthToken });
+        if (!response || !response.success || !response.user) {
+            throw new Error('OAuth authentication failed');
+        }
+
+        const user = response.user;
+        currentUser = {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            department: user.department,
+            name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email
+        };
+        currentRole = user.role;
+
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        localStorage.setItem('currentRole', currentRole);
+
+        history.replaceState(null, '', cleanUrl);
+        showToast('Signed in successfully', 'success');
+        showDashboardPage();
+    } catch (error) {
+        history.replaceState(null, '', cleanUrl);
+        showLoginPage();
+        showToast(error.message || 'Social sign-in failed', 'error');
+    }
+
+    return true;
+}
 
 // Initialize dark mode from localStorage
 function initializeDarkMode() {

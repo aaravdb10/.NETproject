@@ -1,9 +1,10 @@
-from flask import Flask, render_template, request, jsonify, send_from_directory, has_request_context
+from flask import Flask, render_template, request, jsonify, send_from_directory, has_request_context, session, redirect
 from flask_cors import CORS
 from dotenv import load_dotenv
 import sqlite3
 import hashlib
 import os
+import json
 
 load_dotenv()  # loads .env into os.environ
 from datetime import datetime
@@ -32,14 +33,26 @@ SQLSERVER_ENABLED = DB_TYPE == 'sqlserver'
 
 OTP_EXPIRY_SECONDS = 300
 OTP_MAX_ATTEMPTS = 5
+OAUTH_TEMP_TOKEN_EXPIRY_SECONDS = 180
 
 RECAPTCHA_SECRET_KEY = os.getenv('RECAPTCHA_SECRET_KEY', '').strip()
 RECAPTCHA_SITE_KEY = os.getenv('RECAPTCHA_SITE_KEY', '').strip()
 RECAPTCHA_ENABLED = bool(RECAPTCHA_SECRET_KEY and RECAPTCHA_SITE_KEY)
 
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '').strip()
+GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', '').strip()
+GOOGLE_REDIRECT_URI = os.getenv('GOOGLE_REDIRECT_URI', 'http://localhost:5000/api/auth/google/callback').strip()
+GOOGLE_OAUTH_ENABLED = bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET)
+
+GITHUB_CLIENT_ID = os.getenv('GITHUB_CLIENT_ID', '').strip()
+GITHUB_CLIENT_SECRET = os.getenv('GITHUB_CLIENT_SECRET', '').strip()
+GITHUB_REDIRECT_URI = os.getenv('GITHUB_REDIRECT_URI', 'http://localhost:5000/api/auth/github/callback').strip()
+GITHUB_OAUTH_ENABLED = bool(GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET)
+
 otp_sessions = {}
 pending_registrations = {}
 pending_logins = {}
+pending_oauth_callbacks = {}
 
 def get_db_connection():
     """Get database connection"""
@@ -306,6 +319,10 @@ def cleanup_expired_security_state():
     for token in expired_login:
         pending_logins.pop(token, None)
 
+    expired_oauth = [token for token, payload in pending_oauth_callbacks.items() if payload['expires_at'] < now]
+    for token in expired_oauth:
+        pending_oauth_callbacks.pop(token, None)
+
 
 def verify_recaptcha(token: str, remote_ip: str = None) -> Tuple[bool, str]:
     """Verify Google reCAPTCHA token on server side"""
@@ -333,7 +350,6 @@ def verify_recaptcha(token: str, remote_ip: str = None) -> Tuple[bool, str]:
         with urllib.request.urlopen(req, timeout=8) as resp:
             raw = resp.read().decode('utf-8')
 
-        import json
         result = json.loads(raw)
 
         if result.get('success'):
@@ -411,6 +427,205 @@ def get_client_ip() -> str:
     return (request.remote_addr or '').strip()
 
 
+def normalize_google_name(given_name: str, family_name: str, full_name: str):
+    """Map Google profile name fields to first/last name."""
+    first_name = (given_name or '').strip()
+    last_name = (family_name or '').strip()
+
+    if not first_name and full_name:
+        name_parts = [part for part in (full_name or '').strip().split(' ') if part]
+        if name_parts:
+            first_name = name_parts[0]
+            last_name = ' '.join(name_parts[1:])
+
+    return first_name or 'Google', last_name or 'User'
+
+
+def build_user_payload(row):
+    """Create frontend user payload from DB row/dict."""
+    return {
+        'id': row.get('id'),
+        'firstName': row.get('first_name'),
+        'lastName': row.get('last_name'),
+        'email': row.get('email'),
+        'role': row.get('role'),
+        'department': row.get('department'),
+        'status': row.get('status'),
+    }
+
+
+def exchange_google_code_for_token(code: str):
+    """Exchange authorization code for Google tokens."""
+    payload = {
+        'code': code,
+        'client_id': GOOGLE_CLIENT_ID,
+        'client_secret': GOOGLE_CLIENT_SECRET,
+        'redirect_uri': GOOGLE_REDIRECT_URI,
+        'grant_type': 'authorization_code',
+    }
+    encoded = urllib.parse.urlencode(payload).encode('utf-8')
+    req = urllib.request.Request(
+        'https://oauth2.googleapis.com/token',
+        data=encoded,
+        method='POST',
+        headers={'Content-Type': 'application/x-www-form-urlencoded'}
+    )
+
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        raw = resp.read().decode('utf-8')
+
+    return json.loads(raw)
+
+
+def fetch_google_userinfo(access_token: str):
+    """Fetch Google user profile using access token."""
+    req = urllib.request.Request(
+        'https://www.googleapis.com/oauth2/v3/userinfo',
+        method='GET',
+        headers={'Authorization': f'Bearer {access_token}'}
+    )
+
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        raw = resp.read().decode('utf-8')
+
+    return json.loads(raw)
+
+
+def find_or_create_google_user(email: str, given_name: str, family_name: str, full_name: str):
+    """Find existing active user by email or create an employee account."""
+    existing = fetch_one('''
+        SELECT id, first_name, last_name, email, role, department, status
+        FROM users
+        WHERE email = ?
+    ''', (email,))
+
+    if existing:
+        if existing.get('status') != 'active':
+            raise RuntimeError('Your account is inactive. Please contact admin.')
+        return build_user_payload(existing), False
+
+    first_name, last_name = normalize_google_name(given_name, family_name, full_name)
+    random_password = hash_password(secrets.token_urlsafe(24))
+
+    user_id = execute_insert_returning_id('''
+        INSERT INTO users (first_name, last_name, email, password, role, department)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ''', (first_name, last_name, email, random_password, 'employee', 'General'))
+
+    created = fetch_one('''
+        SELECT id, first_name, last_name, email, role, department, status
+        FROM users
+        WHERE id = ?
+    ''', (user_id,))
+
+    return build_user_payload(created), True
+
+
+def exchange_github_code_for_token(code: str):
+    """Exchange authorization code for GitHub access token."""
+    payload = {
+        'client_id': GITHUB_CLIENT_ID,
+        'client_secret': GITHUB_CLIENT_SECRET,
+        'code': code,
+        'redirect_uri': GITHUB_REDIRECT_URI,
+    }
+    encoded = urllib.parse.urlencode(payload).encode('utf-8')
+    req = urllib.request.Request(
+        'https://github.com/login/oauth/access_token',
+        data=encoded,
+        method='POST',
+        headers={
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json',
+        }
+    )
+
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        raw = resp.read().decode('utf-8')
+
+    return json.loads(raw)
+
+
+def fetch_github_userinfo(access_token: str):
+    """Fetch GitHub profile and primary verified email."""
+    base_headers = {
+        'Authorization': f'Bearer {access_token}',
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        'User-Agent': 'RBAC2-App',
+    }
+
+    user_req = urllib.request.Request(
+        'https://api.github.com/user',
+        method='GET',
+        headers=base_headers,
+    )
+    with urllib.request.urlopen(user_req, timeout=10) as resp:
+        user_raw = resp.read().decode('utf-8')
+    user_data = json.loads(user_raw)
+
+    emails_req = urllib.request.Request(
+        'https://api.github.com/user/emails',
+        method='GET',
+        headers=base_headers,
+    )
+    with urllib.request.urlopen(emails_req, timeout=10) as resp:
+        emails_raw = resp.read().decode('utf-8')
+    email_rows = json.loads(emails_raw)
+
+    verified_primary = None
+    for row in email_rows:
+        if row.get('primary') and row.get('verified'):
+            verified_primary = (row.get('email') or '').strip().lower()
+            break
+
+    if not verified_primary:
+        for row in email_rows:
+            if row.get('verified'):
+                verified_primary = (row.get('email') or '').strip().lower()
+                break
+
+    return {
+        'email': verified_primary,
+        'name': user_data.get('name') or '',
+        'login': user_data.get('login') or '',
+    }
+
+
+def find_or_create_github_user(email: str, name: str, login: str):
+    """Find existing active user by email or create an employee account from GitHub profile."""
+    existing = fetch_one('''
+        SELECT id, first_name, last_name, email, role, department, status
+        FROM users
+        WHERE email = ?
+    ''', (email,))
+
+    if existing:
+        if existing.get('status') != 'active':
+            raise RuntimeError('Your account is inactive. Please contact admin.')
+        return build_user_payload(existing), False
+
+    first_name, last_name = normalize_google_name('', '', name)
+    if first_name == 'Google' and login:
+        first_name = login
+        last_name = ''
+
+    random_password = hash_password(secrets.token_urlsafe(24))
+
+    user_id = execute_insert_returning_id('''
+        INSERT INTO users (first_name, last_name, email, password, role, department)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ''', (first_name, last_name, email, random_password, 'employee', 'General'))
+
+    created = fetch_one('''
+        SELECT id, first_name, last_name, email, role, department, status
+        FROM users
+        WHERE id = ?
+    ''', (user_id,))
+
+    return build_user_payload(created), True
+
+
 def log_action(user_id, action, details=None):
     """Log user action to audit log with request metadata when available."""
     ip_address = None
@@ -438,7 +653,215 @@ def get_security_config():
         'recaptchaEnabled': RECAPTCHA_ENABLED,
         'recaptchaSiteKey': RECAPTCHA_SITE_KEY,
         'otpExpirySeconds': OTP_EXPIRY_SECONDS,
+        'googleOAuthEnabled': GOOGLE_OAUTH_ENABLED,
+        'githubOAuthEnabled': GITHUB_OAUTH_ENABLED,
     })
+
+
+@app.route('/api/auth/google/start', methods=['GET'])
+def google_oauth_start():
+    """Start Google OAuth flow (login/signup)."""
+    if not GOOGLE_OAUTH_ENABLED:
+        return jsonify({'success': False, 'message': 'Google OAuth is not configured'}), 503
+
+    mode = (request.args.get('mode') or 'login').strip().lower()
+    if mode not in ('login', 'signup'):
+        mode = 'login'
+
+    state = secrets.token_urlsafe(24)
+    session['google_oauth_state'] = state
+    session['google_oauth_mode'] = mode
+
+    params = {
+        'client_id': GOOGLE_CLIENT_ID,
+        'redirect_uri': GOOGLE_REDIRECT_URI,
+        'response_type': 'code',
+        'scope': 'openid email profile',
+        'state': state,
+        'prompt': 'select_account',
+        'access_type': 'online',
+        'include_granted_scopes': 'true',
+    }
+
+    auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?{urllib.parse.urlencode(params)}"
+    return redirect(auth_url)
+
+
+@app.route('/api/auth/google/callback', methods=['GET'])
+def google_oauth_callback():
+    """Handle Google OAuth callback and create temporary login handoff token."""
+    def _redirect_with_error(message: str):
+        return redirect('/#oauth_error=' + urllib.parse.quote(message))
+
+    try:
+        if not GOOGLE_OAUTH_ENABLED:
+            return _redirect_with_error('Google OAuth is not configured')
+
+        oauth_error = (request.args.get('error') or '').strip()
+        if oauth_error:
+            return _redirect_with_error('Google sign-in was cancelled or denied')
+
+        state = request.args.get('state')
+        expected_state = session.pop('google_oauth_state', None)
+        mode = session.pop('google_oauth_mode', 'login')
+
+        if not state or not expected_state or not hmac.compare_digest(state, expected_state):
+            return _redirect_with_error('OAuth state validation failed')
+
+        code = (request.args.get('code') or '').strip()
+        if not code:
+            return _redirect_with_error('Missing authorization code from Google')
+
+        token_data = exchange_google_code_for_token(code)
+        access_token = token_data.get('access_token')
+        if not access_token:
+            return _redirect_with_error('Unable to complete Google authentication')
+
+        profile = fetch_google_userinfo(access_token)
+        email = (profile.get('email') or '').strip().lower()
+        email_verified = bool(profile.get('email_verified'))
+
+        if not email or not email_verified:
+            return _redirect_with_error('Google account email is missing or unverified')
+
+        user, created = find_or_create_google_user(
+            email=email,
+            given_name=profile.get('given_name') or '',
+            family_name=profile.get('family_name') or '',
+            full_name=profile.get('name') or '',
+        )
+
+        temp_token = secrets.token_urlsafe(24)
+        pending_oauth_callbacks[temp_token] = {
+            'user': user,
+            'mode': mode,
+            'created': created,
+            'provider': 'google',
+            'expires_at': datetime.utcnow() + timedelta(seconds=OAUTH_TEMP_TOKEN_EXPIRY_SECONDS),
+        }
+
+        return redirect('/#oauth_token=' + urllib.parse.quote(temp_token))
+
+    except RuntimeError as e:
+        return _redirect_with_error(str(e))
+    except Exception:
+        return _redirect_with_error('Google login failed. Please try again')
+
+
+@app.route('/api/auth/github/start', methods=['GET'])
+def github_oauth_start():
+    """Start GitHub OAuth flow (login/signup)."""
+    if not GITHUB_OAUTH_ENABLED:
+        return jsonify({'success': False, 'message': 'GitHub OAuth is not configured'}), 503
+
+    mode = (request.args.get('mode') or 'login').strip().lower()
+    if mode not in ('login', 'signup'):
+        mode = 'login'
+
+    state = secrets.token_urlsafe(24)
+    session['github_oauth_state'] = state
+    session['github_oauth_mode'] = mode
+
+    params = {
+        'client_id': GITHUB_CLIENT_ID,
+        'redirect_uri': GITHUB_REDIRECT_URI,
+        'scope': 'read:user user:email',
+        'state': state,
+        'allow_signup': 'true',
+    }
+
+    auth_url = f"https://github.com/login/oauth/authorize?{urllib.parse.urlencode(params)}"
+    return redirect(auth_url)
+
+
+@app.route('/api/auth/github/callback', methods=['GET'])
+def github_oauth_callback():
+    """Handle GitHub OAuth callback and create temporary login handoff token."""
+    def _redirect_with_error(message: str):
+        return redirect('/#oauth_error=' + urllib.parse.quote(message))
+
+    try:
+        if not GITHUB_OAUTH_ENABLED:
+            return _redirect_with_error('GitHub OAuth is not configured')
+
+        oauth_error = (request.args.get('error') or '').strip()
+        if oauth_error:
+            return _redirect_with_error('GitHub sign-in was cancelled or denied')
+
+        state = request.args.get('state')
+        expected_state = session.pop('github_oauth_state', None)
+        mode = session.pop('github_oauth_mode', 'login')
+
+        if not state or not expected_state or not hmac.compare_digest(state, expected_state):
+            return _redirect_with_error('OAuth state validation failed')
+
+        code = (request.args.get('code') or '').strip()
+        if not code:
+            return _redirect_with_error('Missing authorization code from GitHub')
+
+        token_data = exchange_github_code_for_token(code)
+        access_token = (token_data.get('access_token') or '').strip()
+        if not access_token:
+            return _redirect_with_error('Unable to complete GitHub authentication')
+
+        profile = fetch_github_userinfo(access_token)
+        email = (profile.get('email') or '').strip().lower()
+        if not email:
+            return _redirect_with_error('No verified email found in GitHub account')
+
+        user, created = find_or_create_github_user(
+            email=email,
+            name=profile.get('name') or '',
+            login=profile.get('login') or '',
+        )
+
+        temp_token = secrets.token_urlsafe(24)
+        pending_oauth_callbacks[temp_token] = {
+            'user': user,
+            'mode': mode,
+            'created': created,
+            'provider': 'github',
+            'expires_at': datetime.utcnow() + timedelta(seconds=OAUTH_TEMP_TOKEN_EXPIRY_SECONDS),
+        }
+
+        return redirect('/#oauth_token=' + urllib.parse.quote(temp_token))
+    except RuntimeError as e:
+        return _redirect_with_error(str(e))
+    except Exception:
+        return _redirect_with_error('GitHub login failed. Please try again')
+
+
+@app.route('/api/auth/oauth/finalize', methods=['POST'])
+def oauth_finalize_login():
+    """Finalize OAuth login from temporary callback token."""
+    try:
+        cleanup_expired_security_state()
+        data = request.get_json() or {}
+        token = (data.get('token') or '').strip()
+
+        if not token:
+            return jsonify({'success': False, 'message': 'OAuth token is required'}), 400
+
+        payload = pending_oauth_callbacks.pop(token, None)
+        if not payload:
+            return jsonify({'success': False, 'message': 'OAuth session expired or invalid'}), 400
+
+        user = payload['user']
+        mode = payload.get('mode') or 'login'
+        created = bool(payload.get('created'))
+        provider = (payload.get('provider') or 'oauth').strip().lower()
+
+        action = f'{provider}_oauth_signup' if created or mode == 'signup' else f'{provider}_oauth_login'
+        detail = f"{provider.title()} OAuth {'signup' if created else 'login'} for {user.get('email')}"
+        log_action(user.get('id'), action, detail)
+
+        return jsonify({
+            'success': True,
+            'message': f'{provider.title()} authentication successful',
+            'user': user,
+        })
+    except Exception:
+        return jsonify({'success': False, 'message': 'Unable to finalize OAuth login'}), 500
 
 
 @app.route('/api/auth/register-init', methods=['POST'])

@@ -1,398 +1,346 @@
-# 🛡️ RBAC Web Application
+﻿# SecureFlow RBAC
 
-A comprehensive Role-Based Access Control (RBAC) web application demonstrating enterprise-level security concepts with a modern, responsive interface.
+A Flask-based Role-Based Access Control web application with two-factor OTP authentication, Google and GitHub OAuth2, reCAPTCHA, leave management, audit trails, and role-driven dashboards. Runs on SQLite by default with optional SQL Server support.
 
-![RBAC Demo](https://img.shields.io/badge/Demo-Live-brightgreen)
-![Python](https://img.shields.io/badge/Python-3.7+-blue)
-![Flask](https://img.shields.io/badge/Flask-2.3.3-lightgrey)
-![License](https://img.shields.io/badge/License-MIT-yellow)
+---
 
-## 🎯 Features
-
-### 🔐 Authentication & Security
-- **Secure Authentication**: SHA256 password hashing with session management
-- **Role-Based Access Control**: Three distinct user roles (Admin, Manager, Employee)
-- **SQL Injection Prevention**: Comprehensive protection against SQL injection attacks
-- **Session Security**: Secure cookies, session hijacking protection, proper logout
-- **IDOR Protection**: Prevention of Insecure Direct Object Reference vulnerabilities
-- **Parameterized Queries**: All database operations use secure prepared statements
-- **Input Validation**: Multi-layer validation and sanitization of user inputs
-- **Authorization Checks**: Resource ownership validation and role-based permissions
-- **Audit Logging**: Complete audit trail of user actions and security events
-- **Security Monitoring**: Real-time detection and logging of security threats
-
-### 👥 User Management
-- **Admin Dashboard**: Full CRUD operations for user management
-- **User Roles**: Dynamic role assignment and permission control
-- **Status Management**: Active/inactive user status control
-- **Self-Protection**: Users cannot delete themselves or modify critical data
-
-### 🎨 Modern UI/UX
-- **Responsive Design**: Mobile-first approach, works on all devices
-- **Dark Mode**: Complete theme system with localStorage persistence
-- **Professional Interface**: Modern card-based layout with smooth animations
-- **Toast Notifications**: Real-time user feedback for all operations
-
-### 🖥️ Dashboard Features
-- **Role-Specific Dashboards**: Customized interfaces for each user role
-- **Navigation System**: Clean, intuitive navigation with breadcrumbs
-- **Demo Accounts**: Pre-configured accounts for testing all features
-- **Real-time Updates**: Dynamic content updates without page refresh
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Python 3.7 or higher
-- Modern web browser (Chrome, Firefox, Safari, Edge)
-
-### Installation & Setup
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/RBAC-Web-Application.git
-   cd RBAC-Web-Application
-   ```
-
-2. **Install Python dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Run the application**
-   ```bash
-   python app.py
-   ```
-   
-   **Or use the Windows batch file:**
-   ```bash
-   start_backend.bat
-   ```
-
-4. **Access the application**
-   - Open your browser and navigate to `http://localhost:5000`
-   - The application will automatically initialize the database with demo accounts
-
-## 👥 Demo Accounts
-
-Test the application with these pre-configured accounts:
-
-| Role | Email | Password | Access Level |
-|------|-------|----------|--------------|
-| **🔴 Admin** | admin@company.com | admin123 | Full system access, user management |
-| **🟡 Manager** | manager@company.com | manager123 | Team management, reports |
-| **🟢 Employee** | employee@company.com | employee123 | Personal profile, basic access |
-
-### Quick Demo Links
-Click the role demonstration cards on the homepage to instantly login with demo accounts!
-
-## 📂 Project Structure
-
-```
-RBAC-Web-Application/
-├── 📄 index.html              # Main application interface
-├── 🎨 style.css              # Complete styling with dark mode
-├── ⚡ script.js              # Frontend JavaScript functionality
-├── 🐍 app.py                 # Flask backend with API endpoints
-├── 📋 requirements.txt       # Python dependencies
-├── 🚀 start_backend.bat      # Windows startup script
-├── 📖 README.md             # This documentation
-├── 📊 STEP1_IMPLEMENTATION.md # Implementation details
-├── ✅ FINAL_STATUS_REPORT.md # Project completion report
-├── 🧪 TESTING_CHECKLIST.md  # Testing documentation
-└── 🚫 .gitignore            # Git ignore configuration
-```
-
-## 🔧 API Endpoints
+## Features
 
 ### Authentication
-- `POST /api/auth/login` - User authentication
-- `POST /api/auth/register` - New user registration
+- Two-step registration: validate inputs + reCAPTCHA → OTP email → create account
+- Two-step login: validate credentials + reCAPTCHA → OTP email → session
+- OTP validity: 5 minutes, max 5 attempts per session, hashed in memory
+- Google OAuth2 (Authorization Code flow) — login and signup
+- GitHub OAuth2 (Authorization Code flow, fetches verified primary email) — login and signup
+- Legacy single-step login and register endpoints (no OTP) kept as fallback
+- "Keep me signed in" checkbox on login
+- Passwords hashed with SHA-256 before storage
 
-### User Management (Admin Only)
-- `GET /api/users` - Retrieve all users
-- `POST /api/users` - Create new user
-- `PUT /api/users/<id>` - Update user information
-- `DELETE /api/users/<id>` - Delete user
+### RBAC & User Management
+- Three roles: `admin`, `manager`, `employee`
+- Admin can create, edit, activate/deactivate, and delete users
+- Profile view with extended fields: phone, bio, department, join date
+- Self-service password change (requires current password)
 
-### Static Files
-- `GET /` - Serve main application
-- `GET /<filename>` - Serve static assets (CSS, JS, images)
+### Leave Management
+- Submit leave requests (vacation, sick, personal) with date range
+- Auto-calculated working days
+- Approve / reject workflow (manager/admin)
+- Per-employee and per-type aggregated leave reports
 
-## 🎨 User Interface Features
+### Audit Logging
+- Every significant action (login, register, OAuth, user changes, leave ops) written to `audit_log`
+- Captures: user ID, action, details, IP address, user agent, request path, HTTP method, timestamp
+- Admin can filter audit log by user
 
-### 🌙 Dark Mode
-- **Toggle Control**: Available on all pages
-- **Persistent State**: Theme preference saved to localStorage
-- **Smooth Transitions**: Animated theme switching
-- **Complete Coverage**: All UI components properly themed
+### Security Modules
+Standalone reference implementations included in the repo:
 
-### 📱 Responsive Design
-- **Mobile-First**: Optimized for mobile devices
-- **Flexible Layouts**: CSS Grid and Flexbox
-- **Touch-Friendly**: Large tap targets for mobile
-- **Cross-Browser**: Compatible with all modern browsers
-
-### 🔄 Interactive Elements
-- **Form Validation**: Real-time input validation
-- **Loading States**: Visual feedback during operations
-- **Error Handling**: Graceful error display and recovery
-- **Success Feedback**: Toast notifications for completed actions
-
-## 🛠️ Technology Stack
+| File | Purpose |
+|------|---------|
+| `sql_injection_prevention.py` | Parameterised query patterns and input sanitisation helpers |
+| `idor_protection.py` | Object-level authorisation checks |
+| `session_security.py` | Session fixation and expiry patterns |
+| `audit_trail.py` | Audit logging reference implementation |
 
 ### Frontend
-- **HTML5**: Semantic markup with accessibility features
-- **CSS3**: Modern styling with CSS Grid, Flexbox, and Variables
-- **JavaScript (ES6+)**: Vanilla JavaScript for all functionality
-- **Font Awesome**: Professional icons throughout
-- **Google Fonts**: Inter font family for optimal readability
-
-### Backend
-- **Python Flask**: Lightweight web framework
-- **SQLite**: File-based database for simplicity
-- **Flask-CORS**: Cross-origin resource sharing
-- **SHA256**: Password hashing for security
-
-### Architecture
-- **Single Page Application**: All functionality in one HTML file
-- **RESTful API**: Standard REST endpoints for all operations
-- **Session-Based Auth**: Secure session management
-- **Responsive Design**: Mobile-first approach
-
-## 🛡️ Security Features
-
-### SQL Injection Prevention
-This application implements comprehensive SQL injection protection through multiple security layers:
-
-#### 🔒 Parameterized Queries
-All database operations use prepared statements with parameter binding:
-```python
-# Secure query example
-query = "SELECT * FROM users WHERE email = ? AND password = ?"
-result = conn.execute(query, (email, hashed_password))
-```
-
-#### 🛡️ Input Validation & Sanitization
-- **Pattern-based validation**: Detects dangerous SQL patterns and keywords
-- **HTML escaping**: Prevents XSS attacks through database
-- **Input sanitization**: Removes null bytes and dangerous characters
-- **Field-specific validation**: Tailored validation for different input types
-
-#### 📊 Security Repository Pattern
-The `SecureUserRepository` class provides ORM-like functionality:
-```python
-# Secure repository usage
-user_data = user_repository.authenticate_user(email, password_hash)
-user_id = user_repository.create_user(validated_data)
-success = user_repository.update_user(user_id, updates)
-```
-
-#### 🔍 Security Monitoring
-- **Security event logging**: All suspicious activities are logged
-- **Attack pattern detection**: Real-time monitoring for injection attempts
-- **Error handling**: Secure error responses that don't expose database structure
-
-### Testing Security
-Run the security test suites to verify protection:
-```bash
-# Test SQL Injection Prevention
-python security_test.py
-
-# Test Session Security
-python session_security_test.py
-
-# Test IDOR Protection
-python idor_protection_test.py
-```
-
-### Security Documentation
-- **SQL Injection Prevention**: [SQL_INJECTION_PREVENTION.md](SQL_INJECTION_PREVENTION.md)
-- **Session Security**: [SESSION_SECURITY_GUIDE.md](SESSION_SECURITY_GUIDE.md)
-- **IDOR Protection**: [IDOR_PROTECTION_GUIDE.md](IDOR_PROTECTION_GUIDE.md)
-
-### Implementation Summaries
-- **Session Security**: [SESSION_SECURITY_IMPLEMENTATION_SUMMARY.md](SESSION_SECURITY_IMPLEMENTATION_SUMMARY.md)
-- **IDOR Protection**: [IDOR_IMPLEMENTATION_SUMMARY.md](IDOR_IMPLEMENTATION_SUMMARY.md)
-
-### Password Security
-- **SHA256 Hashing**: All passwords securely hashed
-- **No Plain Text**: Passwords never stored in plain text
-- **Session Management**: Secure session handling
-
-### Access Control
-- **Role-Based Permissions**: Different access levels per role
-- **API Protection**: All endpoints validate user permissions
-- **Self-Protection**: Users cannot perform destructive actions on themselves
-- **Input Validation**: All user inputs validated and sanitized
-
-### Audit Trail
-- **Action Logging**: All user actions logged to database
-- **Timestamp Tracking**: Complete audit trail with timestamps
-- **User Attribution**: All actions linked to specific users
-
-## 🔐 Session Security
-
-### Secure Cookie Implementation
-This application implements enterprise-grade session security with secure cookies:
-
-#### 🍪 Cookie Security Features
-- **HttpOnly Cookies**: Prevent JavaScript access to session tokens
-- **Secure Cookies**: HTTPS-only transmission in production
-- **SameSite=Strict**: Complete CSRF protection
-- **Custom Cookie Names**: Branded session identification
-
-#### 🛡️ Session Hijacking Protection
-- **Session Fingerprinting**: IP address and user agent tracking
-- **Real-time Validation**: Continuous session integrity checking
-- **Automatic Invalidation**: Suspicious activity detection and response
-- **Activity Monitoring**: Comprehensive session lifecycle tracking
-
-#### 🚪 Secure Logout Procedures
-- **Complete Cookie Clearing**: Secure session termination
-- **Database Cleanup**: Server-side session invalidation
-- **Logout All Sessions**: Security-focused mass logout capability
-- **Audit Trail**: Complete logout activity logging
-
-### Session Management API
-```javascript
-// Secure session validation
-const isValid = await validateSession();
-
-// Secure logout
-await logout();
-
-// Logout all sessions
-await logoutAllSessions();
-```
-
-### Testing Session Security
-Run the session security test suite:
-```bash
-python session_security_test.py
-```
-
-For detailed session security documentation, see: [SESSION_SECURITY_GUIDE.md](SESSION_SECURITY_GUIDE.md)
-
-## 🧪 Testing & Quality
-
-### Comprehensive Testing
-- **Manual Testing**: Complete testing checklist included
-- **Cross-Browser**: Tested on Chrome, Firefox, Safari, Edge
-- **Mobile Testing**: Verified on various mobile devices
-- **Role Testing**: All roles thoroughly tested
-
-### Code Quality
-- **Clean Architecture**: Well-organized, maintainable code
-- **Error Handling**: Comprehensive error handling throughout
-- **Documentation**: Complete inline documentation
-- **Best Practices**: Following security and development best practices
-
-## 📱 Browser Compatibility
-
-| Browser | Support | Notes |
-|---------|---------|-------|
-| 🌐 Chrome | ✅ Full | Recommended browser |
-| 🦊 Firefox | ✅ Full | Complete compatibility |
-| 🧭 Safari | ✅ Full | All features working |
-| 🌊 Edge | ✅ Full | Modern Edge versions |
-
-## 🎓 Educational Value
-
-This project demonstrates:
-
-### Web Development Concepts
-- **Full-Stack Development**: Complete frontend and backend integration
-- **RESTful API Design**: Standard API patterns and practices
-- **Responsive Web Design**: Mobile-first development approach
-- **Modern JavaScript**: ES6+ features and best practices
-
-### Security Concepts
-- **Authentication**: Secure user authentication implementation
-- **Authorization**: Role-based access control patterns
-- **Session Management**: Secure session handling and cookie protection
-- **SQL Injection Prevention**: Parameterized queries and input validation
-- **IDOR Protection**: Prevention of Insecure Direct Object Reference attacks
-- **Input Validation**: Preventing common security vulnerabilities
-- **Audit Logging**: Comprehensive security event tracking
-
-### Database Design
-- **Relational Design**: Proper database schema with relationships
-- **Data Integrity**: Foreign keys and constraints
-- **Audit Logging**: Complete audit trail implementation
-
-## 🤝 Contributing
-
-We welcome contributions! Here's how you can help:
-
-1. **Fork the repository**
-2. **Create a feature branch** (`git checkout -b feature/AmazingFeature`)
-3. **Commit your changes** (`git commit -m 'Add some AmazingFeature'`)
-4. **Push to the branch** (`git push origin feature/AmazingFeature`)
-5. **Open a Pull Request**
-
-### Contribution Guidelines
-- Follow existing code style and patterns
-- Add tests for new features
-- Update documentation as needed
-- Ensure all tests pass before submitting
-
-## 📋 Future Enhancements
-
-Potential improvements and features:
-
-- [ ] Email verification for registration
-- [ ] Password reset functionality
-- [ ] Two-factor authentication
-- [ ] Advanced user search and filtering
-- [ ] Bulk user operations
-- [ ] Export user data functionality
-- [ ] Advanced audit reporting
-- [ ] API rate limiting
-- [ ] JWT token authentication
-- [ ] Docker containerization
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 👨‍💻 Author
-
-**Aarav Gandhi**
-- 🐙 GitHub: [@aaravgandhi](https://github.com/aaravgandhi)
-- 📧 Email: aarav.gandhi@example.com
-- 💼 LinkedIn: [Aarav Gandhi](https://linkedin.com/in/aaravgandhi)
-
-## 🎯 Project Goals
-
-This RBAC application was created to demonstrate:
-
-### Technical Skills
-- Full-stack web development proficiency
-- Security-first development approach
-- Modern UI/UX design principles
-- Database design and management
-
-### Cybersecurity Knowledge
-- Role-based access control implementation
-- Secure authentication patterns
-- Audit logging and compliance
-- Security best practices
-
-## 🙏 Acknowledgments
-
-- **Flask Community**: For the excellent web framework
-- **MDN Web Docs**: For comprehensive web development resources
-- **Font Awesome**: For professional icons
-- **Google Fonts**: For beautiful typography
+- Single-page app (SPA) — all views assembled from Jinja2 partials, no client-side router needed
+- Vanilla JavaScript, no framework dependencies
+- Two-column auth layout: branded left panel + form right panel
+- Step indicator for multi-step auth flows
+- Password strength meter with per-rule checklist
+- Social sign-in: circular icon buttons (Google, GitHub) with brand-coloured hover states
+- OTP input with large letter-spaced display
+- Demo account quick-login buttons on the login page
+- Dark mode via `[data-theme="dark"]` CSS custom properties
+- Responsive — single-column layout below 860 px
 
 ---
 
-⭐ **Star this repository if you found it helpful!**
+## Tech Stack
 
-📢 **Share it with others who might benefit from this RBAC implementation!**
-
-🐛 **Found a bug? Please create an issue!**
+| Layer | Technology |
+|-------|-----------|
+| Backend | Python 3.8+, Flask 2.3, Flask-CORS 4.0, Werkzeug 2.3 |
+| Database | SQLite (default) · SQL Server via `pyodbc` (optional) |
+| Auth | Email OTP, Google OAuth2, GitHub OAuth2, Google reCAPTCHA v2 |
+| Frontend | Jinja2 templates, CSS custom properties, vanilla JS |
+| Email | SMTP (configurable — works with Gmail, SendGrid, etc.) |
+| Rate limiting | Flask-Limiter 2.7 |
+| Config | python-dotenv |
 
 ---
 
-*Built with ❤️ for cybersecurity education and modern web development demonstration*
+## Project Structure
+
+```
+RBAC2/
+├── app.py                        # Flask app — all routes and business logic
+├── email_config.py               # SMTP OTP email sender
+├── requirements.txt
+├── start_backend.bat             # Windows one-click start
+├── .env                          # Environment variables (not committed)
+│
+├── style.css                     # Main stylesheet (CSS custom properties, dark mode)
+├── enhancements.css              # Form layout, remember-me, animation helpers
+├── otp-styles.css                # OTP input and reveal panel styles
+├── script.js                     # SPA logic — auth flows, dashboard, API calls
+│
+├── templates/
+│   ├── index.html                # Root template — assembles all partials
+│   └── partials/
+│       ├── _head.html            # <head>, CSS/font imports, reCAPTCHA script
+│       ├── _home.html            # Landing / home page
+│       ├── _register.html        # Registration form (step 1 fields + OTP step)
+│       ├── _login.html           # Login form (step 1 fields + OTP step) + demo buttons
+│       ├── _dashboard.html       # Role-driven dashboard views
+│       ├── _modals.html          # Create/edit user modals, leave request modal
+│       └── _toast.html           # Toast notification container
+│
+├── sql_injection_prevention.py   # Security reference module
+├── idor_protection.py            # Security reference module
+├── session_security.py           # Security reference module
+├── audit_trail.py                # Security reference module
+│
+└── db_backups/                   # SQLite backup directory
+```
+
+---
+
+## Database Schema
+
+Three tables auto-created by `init_database()` on first run (SQLite mode).
+
+### `users`
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | INTEGER PK | Auto-increment |
+| `first_name` | TEXT | |
+| `last_name` | TEXT | |
+| `email` | TEXT UNIQUE | |
+| `password` | TEXT | SHA-256 hash |
+| `role` | TEXT | `admin` · `manager` · `employee` |
+| `department` | TEXT | IT, HR, Finance, Marketing, Operations, General |
+| `phone` | TEXT | Optional |
+| `bio` | TEXT | Optional |
+| `status` | TEXT | `active` · `inactive` |
+| `created_at` | TIMESTAMP | |
+| `updated_at` | TIMESTAMP | |
+
+### `audit_log`
+| Column | Type |
+|--------|------|
+| `id` | INTEGER PK |
+| `user_id` | INTEGER FK → users |
+| `action` | TEXT |
+| `details` | TEXT |
+| `ip_address` | TEXT |
+| `user_agent` | TEXT |
+| `request_path` | TEXT |
+| `http_method` | TEXT |
+| `timestamp` | TIMESTAMP |
+
+### `leave_requests`
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | INTEGER PK | |
+| `user_id` | INTEGER FK | |
+| `type` | TEXT | `vacation` · `sick` · `personal` |
+| `start_date` | TEXT | ISO date |
+| `end_date` | TEXT | ISO date |
+| `days` | INTEGER | Auto-calculated |
+| `reason` | TEXT | |
+| `status` | TEXT | `pending` · `approved` · `rejected` |
+| `created_at` | TIMESTAMP | |
+| `updated_at` | TIMESTAMP | |
+
+---
+
+## Demo Accounts
+
+Seeded automatically when using SQLite:
+
+| Name | Email | Password | Role | Department |
+|------|-------|----------|------|------------|
+| Rahul Sharma | admin@company.com | admin123 | admin | IT |
+| Priya Patel | manager@company.com | manager123 | manager | HR |
+| Vikram Singh | employee@company.com | employee123 | employee | Finance |
+| Aarav Gandhi | aarav.gandhi@company.com | password123 | employee | IT |
+| Neha Gupta | neha.gupta@company.com | password123 | manager | Marketing |
+| Rohan Verma | rohan.verma@company.com | password123 | employee | Operations |
+
+---
+
+## Setup
+
+### 1. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 2. Configure environment variables
+
+Create a `.env` file in the project root:
+
+```env
+# ── reCAPTCHA (optional — skipped if blank) ──────────────────────────────────
+RECAPTCHA_SITE_KEY=
+RECAPTCHA_SECRET_KEY=
+
+# ── Google OAuth2 (optional — buttons hidden if blank) ────────────────────────
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_REDIRECT_URI=http://localhost:5000/api/auth/google/callback
+
+# ── GitHub OAuth2 (optional — buttons hidden if blank) ────────────────────────
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+GITHUB_REDIRECT_URI=http://localhost:5000/api/auth/github/callback
+
+# ── OTP email (required for OTP delivery) ────────────────────────────────────
+SMTP_SERVER=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=
+SMTP_PASSWORD=
+
+# ── Database (leave blank to use SQLite) ─────────────────────────────────────
+DB_TYPE=sqlite
+# For SQL Server set DB_TYPE=sqlserver and fill in:
+DB_SERVER=
+DB_NAME=
+DB_USER=
+DB_PASSWORD=
+DB_DRIVER=
+```
+
+### 3. Run
+
+```bash
+python app.py
+```
+
+Windows shortcut:
+```bat
+start_backend.bat
+```
+
+### 4. Open
+
+```
+http://localhost:5000
+```
+
+---
+
+## OAuth2 Setup
+
+### Google
+1. Go to [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials
+2. Create an **OAuth 2.0 Client ID** (Web application)
+3. Add authorised redirect URI: `http://localhost:5000/api/auth/google/callback`
+4. Copy **Client ID** → `GOOGLE_CLIENT_ID` and **Client Secret** → `GOOGLE_CLIENT_SECRET`
+
+### GitHub
+1. Go to GitHub → Settings → Developer settings → **OAuth Apps** → New OAuth App
+2. Homepage URL: `http://localhost:5000`
+3. Authorization callback URL: `http://localhost:5000/api/auth/github/callback`
+4. Copy **Client ID** → `GITHUB_CLIENT_ID` and generate + copy **Client Secret** → `GITHUB_CLIENT_SECRET`
+
+> OAuth buttons are automatically hidden on the frontend when the corresponding credentials are not set.
+
+---
+
+## API Reference
+
+Base URL: `http://localhost:5000/api`
+
+### Security / Config
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/security/config` | Returns reCAPTCHA site key and OAuth enabled flags |
+
+### Authentication
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/auth/register-init` | Step 1 — validate fields + reCAPTCHA, send OTP |
+| POST | `/auth/register-verify` | Step 2 — verify OTP, create account |
+| POST | `/auth/login-init` | Step 1 — validate credentials + reCAPTCHA, send OTP |
+| POST | `/auth/login-verify` | Step 2 — verify OTP, return user session |
+| GET | `/auth/google/start` | Redirect to Google OAuth consent screen |
+| GET | `/auth/google/callback` | Google OAuth callback — issues temp handoff token |
+| GET | `/auth/github/start` | Redirect to GitHub OAuth consent screen |
+| GET | `/auth/github/callback` | GitHub OAuth callback — issues temp handoff token |
+| POST | `/auth/oauth/finalize` | Exchange temp OAuth token for user session |
+| POST | `/auth/login` | Legacy single-step login (no OTP) |
+| POST | `/auth/register` | Legacy single-step register (no OTP) |
+
+### Users
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/users` | List all users |
+| POST | `/users` | Create user (role defaults to `employee`) |
+| PUT | `/users/<id>` | Update user details, role, status, department |
+| DELETE | `/users/<id>` | Delete user and associated leave requests |
+| GET | `/profile/<id>` | Get extended profile (phone, bio, dates) |
+| PUT | `/profile/<id>/password` | Self-service password change |
+
+### Dashboard & Operations
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/stats` | Counts: users, active, roles, pending leaves, log entries |
+| GET | `/leaves` | All leave requests joined with employee info |
+| POST | `/leaves` | Submit a leave request |
+| PUT | `/leaves/<id>` | Approve or reject a leave request |
+| GET | `/logs` | Audit log — supports `?userId=N` and `?limit=N` |
+| GET | `/reports` | Aggregated leave stats by employee and by type |
+
+---
+
+## OAuth Flow (Technical)
+
+```
+Browser                    Flask                       Provider
+   │                          │                            │
+   ├─ GET /auth/google/start ─►│                            │
+   │                          ├─ set session state ─────────┤
+   │◄─ 302 → Google consent ──┤                            │
+   │                                                       │
+   ├─────────────────────────────────────────── user approves
+   │                                                       │
+   │◄─ 302 → /api/auth/google/callback?code=&state= ───────┤
+   │                          │                            │
+   ├─ follows redirect ───────►│                            │
+   │                          ├─ validate HMAC state        │
+   │                          ├─ exchange code for token ──►│
+   │                          ├─ fetch userinfo ───────────►│
+   │                          ├─ find_or_create_user        │
+   │                          ├─ store temp_token (180s)    │
+   │◄─ 302 → /#oauth_token=X ─┤                            │
+   │                          │                            │
+   ├─ POST /auth/oauth/finalize {token: X} ─────────────────┤
+   │◄─ {success, user} ───────┤                            │
+```
+
+---
+
+## Notes
+
+- OTP flows require valid SMTP credentials. Without them, `register-init` and `login-init` will return 502.
+- reCAPTCHA is bypassed in local dev when `RECAPTCHA_SITE_KEY`/`RECAPTCHA_SECRET_KEY` are not set.
+- OAuth state is validated with `hmac.compare_digest` to prevent CSRF.
+- OAuth temp tokens expire in 180 seconds. Expired entries are cleaned up on each new auth request.
+- New accounts created via Google or GitHub are assigned the `employee` role and `General` department by default. An admin can change these afterwards.
+- GitHub OAuth requires the account to have at least one verified email address.
+- SQL Server mode requires `DB_TYPE=sqlserver`, `DB_SERVER`, `DB_NAME`, `DB_DRIVER`, and `pyodbc` with a matching ODBC driver installed.
+- The SQLite database file `rbac_system.db` is created automatically on first run. The `db_backups/` directory can be used for manual snapshots.
+
+---
+
+## License
+
+MIT — see `LICENSE`.

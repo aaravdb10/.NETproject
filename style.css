@@ -2548,7 +2548,7 @@ body {
 
 /* Card title */
 .auth-card-header {
-    margin-bottom: 22px;
+    margin-bottom: 16px;
 }
 
 .auth-card-header h1 {
@@ -2569,7 +2569,41 @@ body {
 .auth-form {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 14px;
+}
+
+/* Step-1 field containers — proper vertical rhythm */
+.step-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+/* Submit button + social icons in one row */
+.form-submit-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.form-submit-row .auth-btn {
+    flex: 1;
+    width: auto;
+    margin-top: 0;
+}
+
+.submit-social-icons {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+/* reCAPTCHA block — clean stacked layout */
+.recaptcha-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .auth-form .form-group {
@@ -2616,7 +2650,8 @@ body {
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
 }
 
-.auth-form .input-wrapper input {
+.auth-form .input-wrapper input,
+.auth-form .input-wrapper select {
     padding-left: 42px;
 }
 
@@ -2805,9 +2840,78 @@ body {
     box-shadow: none;
 }
 
+/* Social icon buttons — circular pill style */
+.social-auth-icons {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin: 2px 0 4px;
+}
+
+.social-icon-btn {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border-color);
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+    flex-shrink: 0;
+}
+
+.social-icon-btn:hover {
+    transform: translateY(-2px);
+}
+
+.social-icon-btn:active {
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+.social-icon-btn.social-google:hover {
+    color: #EA4335;
+    border-color: #EA4335;
+    box-shadow: 0 4px 14px rgba(234, 67, 53, 0.22);
+    background: rgba(234, 67, 53, 0.05);
+}
+
+.social-icon-btn.social-github:hover {
+    color: var(--text-primary);
+    border-color: var(--text-primary);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
+    background: var(--bg-secondary);
+}
+
+[data-theme="dark"] .social-icon-btn {
+    background: #141414;
+    border-color: #2a374d;
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .social-icon-btn:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .social-icon-btn.social-google:hover {
+    color: #f87171;
+    border-color: #EA4335;
+    background: rgba(234, 67, 53, 0.08);
+}
+
+[data-theme="dark"] .social-icon-btn.social-github:hover {
+    color: #e2e8f0;
+    border-color: #94a3b8;
+    background: #1c1c1c;
+}
+
 /* Divider */
 .auth-divider {
-    margin: 20px 0;
+    margin: 14px 0;
     text-align: center;
     position: relative;
 }

@@ -78,7 +78,7 @@
 
             <form class="auth-form" id="loginForm">
                 <!-- Step 1 fields -->
-                <div id="loginStep1Fields">
+                <div id="loginStep1Fields" class="step-fields">
                     <div class="form-group anim-field" style="--field-i:0">
                         <label for="email">Email address</label>
                         <div class="input-wrapper">
@@ -98,20 +98,13 @@
                         </div>
                     </div>
 
-                    <div class="form-group security-group anim-field"
-                        style="--field-i:3; margin-top: 10px; margin-bottom: 0;">
-                        <label><i class="fas fa-robot" style="color:#2563eb;margin-right:5px;"></i>Verify you're
-                            human</label>
-                        <div class="recaptcha-wrapper-compact">
-                            <div id="loginRecaptcha" class="recaptcha-slot"></div>
-                            <div class="form-group-inline anim-field remember-inline">
-                                <label class="remember-me-label" style="margin-left: 10px;">
-                                    <input type="checkbox" id="rememberMe" name="rememberMe">
-                                    <span class="custom-checkbox"><i class="fas fa-check"></i></span>
-                                    <span style="font-size: 0.8rem;">Remember me</span>
-                                </label>
-                            </div>
-                        </div>
+                    <div class="recaptcha-group anim-field" style="--field-i:2">
+                        <div id="loginRecaptcha" class="recaptcha-slot"></div>
+                        <label class="remember-me-label">
+                            <input type="checkbox" id="rememberMe" name="rememberMe">
+                            <span class="custom-checkbox"><i class="fas fa-check"></i></span>
+                            <span>Keep me signed in</span>
+                        </label>
                     </div>
                 </div>
 
@@ -139,6 +132,16 @@
                     Continue
                 </button>
             </form>
+
+            <div class="auth-divider"><span>Or continue with</span></div>
+            <div class="social-auth-icons">
+                <button type="button" class="social-icon-btn social-google" onclick="continueWithGoogle('login')" title="Continue with Google" aria-label="Continue with Google">
+                    <i class="fab fa-google"></i>
+                </button>
+                <button type="button" class="social-icon-btn social-github" onclick="continueWithGitHub('login')" title="Continue with GitHub" aria-label="Continue with GitHub">
+                    <i class="fab fa-github"></i>
+                </button>
+            </div>
 
             <div class="auth-divider"><span>Or try a demo account</span></div>
 
